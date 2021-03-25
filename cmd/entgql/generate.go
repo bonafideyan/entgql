@@ -2,14 +2,19 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
-	"github.com/facebook/ent/entc"
-	"github.com/facebook/ent/entc/gen"
+	"entgo.io/contrib/entgql"
+	"entgo.io/ent/entc"
+	"entgo.io/ent/entc/gen"
+	"github.com/99designs/gqlgen/api"
+	"github.com/99designs/gqlgen/codegen/config"
+	"github.com/pkg/errors"
 	"github.com/sijad/entgql/generator"
 )
 
-func generate(entSchemaPath, generatedGraphqlPath, generatedResolversPath, generatedHelpersPath, generatedModelsPath string) error {
+func generate(entSchemaPath, generatedGraphqlPath, generatedResolversPath, generatedModelsPath string, tmplAdditionals []string) error {
 	graph, err := entc.LoadGraph(entSchemaPath, &gen.Config{})
 	if err != nil {
 		return fmt.Errorf("generate: %w", err)
@@ -17,44 +22,54 @@ func generate(entSchemaPath, generatedGraphqlPath, generatedResolversPath, gener
 
 	g := &generator.Generator{Graph: graph}
 
-	if err := generateSchema(g, generatedGraphqlPath); err != nil {
+	if err := g.SchemaDefinition(generatedGraphqlPath, tmplAdditionals); err != nil {
 		return fmt.Errorf("generate schema: %w", err)
 	}
 
-	if err := generatedModels(g, generatedModelsPath); err != nil {
-		return fmt.Errorf("generate models: %w", err)
+	entgql.Tellme()
+	err = entc.Generate(entSchemaPath, &gen.Config{
+		Templates: entgql.AllTemplates,
+	})
+	if err != nil {
+		log.Fatalf("running ent codegen: %v", err)
 	}
 
-	if err := generatedResolvers(g, generatedResolversPath); err != nil {
-		return fmt.Errorf("generate resolvers: %w", err)
+	return gqlgenGenerate()
+}
+
+func gqlgenGenerate() error {
+	var cfg *config.Config
+	var err error
+
+	cfg, err = config.LoadConfigFromDefaultLocations()
+	if os.IsNotExist(errors.Cause(err)) {
+		cfg, err = config.LoadDefaultConfig()
 	}
 
+	if err != nil {
+		return err
+	}
+
+	if err = api.Generate(cfg); err != nil {
+		return err
+	}
 	return nil
 }
 
-func generateSchema(g *generator.Generator, filePath string) error {
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return g.SchemaDefinition(file)
-}
+// func generatedModels(g *generator.Generator, filePath string) error {
+// 	file, err := os.Create(filePath)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer file.Close()
+// 	return g.Models(file)
+// }
 
-func generatedModels(g *generator.Generator, filePath string) error {
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return g.Models(file)
-}
-
-func generatedResolvers(g *generator.Generator, filePath string) error {
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return g.Resolvers(file)
-}
+// func generatedResolvers(g *generator.Generator, filePath string) error {
+// 	file, err := os.Create(filePath)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer file.Close()
+// 	return g.Resolvers(file)
+// }

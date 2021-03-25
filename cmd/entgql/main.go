@@ -7,26 +7,29 @@ import (
 )
 
 func main() {
+	var templates []string
 	cmd := &cobra.Command{Use: "gentc"}
-	cmd.AddCommand(
-		&cobra.Command{
-			Use:     "generate",
-			Short:   "generate go code and GraphQL schema for `ent` directory",
-			Example: "entgql generate ./ent/schema",
-			Args:    cobra.ExactArgs(1),
-			Run: func(cmd *cobra.Command, paths []string) {
-				entSchemaPath := paths[0]
-				if err := generate(
-					entSchemaPath,
-					defaultGeneratedGraphqlSchemaPath,
-					defaultGeneratedResolversPath,
-					defaultGeneratedHelpersPath,
-					defaultGeneratedModelsPath,
-				); err != nil {
-					log.Fatalln(err)
-				}
-			},
+	gCmd := &cobra.Command{
+		Use:     "generate",
+		Short:   "generate go code and GraphQL schema for `ent` directory",
+		Example: "entgql generate ./ent/schema",
+		Args:    cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, paths []string) {
+			entSchemaPath := paths[0]
+			if err := generate(
+				entSchemaPath,
+				defaultGeneratedGraphqlSchemaPath,
+				defaultGeneratedResolversPath,
+				defaultGeneratedModelsPath,
+				templates,
+			); err != nil {
+				log.Fatalln(err)
+			}
 		},
+	}
+	gCmd.Flags().StringSliceVarP(&templates, "template", "", nil, "external templates to execute")
+	cmd.AddCommand(
+		gCmd,
 	)
 
 	if err := cmd.Execute(); err != nil {
@@ -35,8 +38,7 @@ func main() {
 }
 
 const (
-	defaultGeneratedGraphqlSchemaPath = "./graph/ent_schema.graphqls"
+	defaultGeneratedGraphqlSchemaPath = "./graph/"
 	defaultGeneratedResolversPath     = "./graph/ent_schema.resolvers.go"
-	defaultGeneratedHelpersPath       = "./graph/ent_schema.helpers.go"
 	defaultGeneratedModelsPath        = "./graph/model/ent_models_gen.go"
 )

@@ -1,27 +1,35 @@
 {{- $node := . -}}
 {{- $name := .Name -}}
-{{- $idType := "Int" -}}
+{{- $idType := "ID" -}}
 {{- if .IDType -}}
-	{{$idType := .IDType | scalarName}}
+	{{$idType := .IDType | scalarName1 }}
 {{- end -}}
 
-{{/* Enums */ -}}
-enum {{$name}}OrderBy {
-  NATURAL
-  ID_ASC
-  ID_DESC
-{{- range $i := $node.Indexes}}
-  {{$i.Name | upperCase}}_ASC
-  {{$i.Name | upperCase}}_DESC
-{{- end}}
+{{/* Enum */ -}}
+{{- range $f := $node.Fields}}
+{{- if isEnum $f  }}
+enum {{$f.Name | camelize}} {
+{{- range $fn := $f.EnumValues}}
+  {{$fn -}}
+{{end}}
 }
-
+input {{$f.Name | camelize}}Filter {
+  isNull: Boolean
+  equalTo: {{$f.Name | camelize}}
+  notEqualTo: {{$f.Name | camelize}}
+  in: [{{$f.Name | camelize}}!]
+  notIn: [{{$f.Name | camelize}}!]
+}
+{{- end}} 
+{{- end}}
+ 
 {{/* Types */ -}}
 type {{$name}} implements Node {
   id: ID!
-{{- range $f := $node.Fields}}
+{{- range $f := $node.Fields -}}
 {{- if not $f.Sensitive }}
-  {{$f.Name | camelize | lowerCaseFirst}}: {{$f.Type | scalarName}}{{if not $f.Nillable}}!{{end}}
+  {{ $tn := $f | scalarName -}} 
+  {{ $f.Name | camelize | lowerCaseFirst}}: {{ $tn }}{{if and (not $f.Default) (not $f.Optional) (not $f.Nillable)}}!{{end}}
 {{- end}}
 {{- end}}
 {{- range $e := $node.Edges}}
@@ -29,61 +37,45 @@ type {{$name}} implements Node {
 {{- if or $e.M2O $e.O2O }}
   {{$e.Name | camelize | lowerCaseFirst}}: {{$eName}}{{if not $e.Optional}}!{{end}}
 {{- else }}
-  """Reads and enables pagination through a set of `{{$eName}}`."""
-  {{$e.Name | camelize | lowerCaseFirst}}(after: String, before: String, first: Int, last: Int, where: {{$eName}}WhereInput, orderBy: [{{$eName}}OrderBy!]): {{$eName}}Connection
+  {{$e.Name | camelize | lowerCaseFirst | pluralize}}Jump(where: {{$eName}}WhereInput, pageIndex: Int, pageLength: Int, orderBy: [{{$eName}}Order!]): {{$eName}}Page!
+  {{$e.Name | camelize | lowerCaseFirst | pluralize}}Step(after: Cursor, before: Cursor, first: Int, last: Int, where: {{$eName}}WhereInput, orderBy: [{{$eName}}Order!]): {{$eName}}Connection
 {{- end}}
 {{- end}}
+{{/* {{- if eq additionalFieldForType }} */}}
+{{- template "additionalFieldForType" .}}
+{{/* {{- end}} */}}
 }
 
-"""A `{{$name}}` edge in the connection."""
+type {{$node.Name}}Page {
+  totalCount: Int!
+  current: Int!
+  nodes: [{{$name}}!]!
+}
+ 
 type {{$name}}Edge {
-  """A cursor for use in pagination."""
-  cursor: String!
-  """The `{{$name}}` at the end of the edge."""
+  cursor: Cursor!
   node: {{$name}}!
 }
 
-"""A connection to a list of `{{$name}}` values."""
 type {{$node.Name}}Connection {
-  """A list of edges which contains the `{{$name}}` and cursor to aid in pagination."""
-  edges: [{{$name}}Edge!]!
-  """Information to aid in pagination."""
-  pageInfo: PageInfo!
-  """The count of all `{{$name}}` you could get from the connection."""
   totalCount: Int!
+  pageInfo: PageInfo!
+  edges: [{{$name}}Edge!]!
 }
-
-type Create{{$name}}Payload {
-  """The exact same `clientMutationId` that was provided in the mutation input, unchanged and unused. May be used by a client to track mutations."""
-  clientMutationId: String
-  """The `{{$name}}` that was created by this mutation."""
-  {{$name | lowerCaseFirst}}: {{$name}}!
-}
-
-type Delete{{$name}}Payload {
-  """The exact same `clientMutationId` that was provided in the mutation input, unchanged and unused. May be used by a client to track mutations."""
-  clientMutationId: String
-  """The `{{$name}}` that was deleted by this mutation."""
-  {{$name | lowerCaseFirst}}: {{$name}}!
-  deleted{{$name}}NodeId: ID!
-}
-
-{{/* Inputes */ -}}
-input {{$name}}WhereInput {
-  id: {{$idType}}Filter
-{{- range $f := $node.Fields}}
-{{- if and $f.Unique (not $f.Sensitive)}}
-  {{$f.Name | camelize | lowerCaseFirst}}: {{$f.Type | scalarName}}Filter
-{{- end}}
-{{- end}}
-  AND: [{{$name}}WhereInput!]
-  OR: [{{$name}}WhereInput!]
-  NOT: [{{$name}}WhereInput!]
-}
-
+ 
 input {{$name}}Input {
-{{- range $f := $node.Fields}}
-  {{$f.Name | camelize | lowerCaseFirst}}: {{$f.Type | scalarName}}{{if not $f.Optional}}!{{end}}
+{{- range $f := $node.Fields -}}
+  {{ $tn := $f | scalarName }} 
+  {{ $f.Name | camelize | lowerCaseFirst}}: {{ $tn }} 
+{{- end}} 
+{{- range $e := $node.Edges}}
+{{- $eName := $e.Type.Name}}
+{{- if or $e.M2O $e.O2O }}
+  {{$e.Name | camelize | lowerCaseFirst}}ID: ID 
+{{- end}}
+{{- if or $e.O2M $e.M2M }}
+  {{$e.Name | camelize | lowerCaseFirst}}ID: [ID!] 
+{{- end}}
 {{- end}}
 }
 
@@ -92,26 +84,93 @@ input Create{{$name}}Input {
   {{$name | lowerCaseFirst}}: {{$name}}Input!
 }
 
+input Modify{{$name}}Input {
+  clientMutationId: String
+  id: ID!
+  {{$name | lowerCaseFirst}}: {{$name}}Input!
+}
+
 input Delete{{$name}}Input {
   clientMutationId: String
   id: {{$idType}}!
 }
+ 
+type Create{{$name}}Payload {
+  clientMutationId: String
+  {{$name | lowerCaseFirst}}: {{$name}}! 
+}
+
+type Modify{{$name}}Payload {
+  clientMutationId: String
+  {{$name | lowerCaseFirst}}: {{$name}}! 
+}
+
+type Delete{{$name}}Payload {
+  clientMutationId: String
+  {{$name | lowerCaseFirst}}: {{$name}}! 
+  
+{{- range $e := $node.Edges}}
+{{- $eName := $e.Type.Name}}
+{{- if $e.M2O }}
+  {{$e.Name | camelize | lowerCaseFirst}}: {{$eName}}{{if not $e.Optional}}!{{end}} 
+{{- end}}
+{{- end}}
+}
+
+{{/* Inputes */ -}}
+input {{$name}}WhereInput {
+  id: {{$idType}}Filter
+{{- range $f := $node.Fields}}
+{{- if not $f.Sensitive }}
+  {{$f.Name | camelize | lowerCaseFirst}}: {{$f | scalarName}}Filter
+{{- end}}
+{{- end}}
+{{- range $e := $node.Edges}}
+{{- $eName := $e.Type.Name}}
+{{- if or $e.M2O $e.O2O }}
+  has{{$e.Name | camelize}}: BooleanFilter
+  of{{$e.Name | camelize}}With: {{$e.Type.Name}}WhereInput
+{{- end}}
+{{- if or $e.O2M $e.M2M }}
+  has{{$e.Name | camelize}}: BooleanFilter
+  has{{$e.Name | camelize}}With: {{$e.Type.Name}}WhereInput
+{{- end}}
+{{- end}}
+  AND: [{{$name}}WhereInput!]
+  OR: [{{$name}}WhereInput!]
+  NOT: [{{$name}}WhereInput!]
+}
+
+enum {{$name}}OrderField {
+{{- range $f := $node.Fields}}
+  {{$f.Name | upperCase}} 
+{{- end}}
+}
+
+input {{$name}}Order {
+    direction: OrderDirection!
+    field: {{$name}}OrderField
+}
 
 {{/* Query */ -}}
 extend type Query {
-  {{$name | lowerCaseFirst}}(id: {{$idType}}!): {{$name}}
+  {{- /* {{$name | lowerCaseFirst}}(id: {{$idType}}!): {{$name}} */}}
 {{- range $f := $node.Fields}}
 {{- if and $f.Unique (not $f.Sensitive)}}
-  {{$name | camelize | lowerCaseFirst}}By{{$f.Name | upperCaseFirst}}({{$f.Name | lowerCaseFirst}}: {{$f.Type | scalarName}}!): {{$name}}
+  {{$name | camelize | lowerCaseFirst}}By{{$f.Name | upperCaseFirst}}({{$f.Name | lowerCaseFirst}}: {{$f | scalarName}}!): {{$name}}
 {{- end}}
 {{- end}}
-  """Reads and enables pagination through a set of `{{$name}}`."""
-  {{$name | camelize | lowerCaseFirst | pluralize}}(after: String, before: String, first: Int, last: Int, where: {{$name}}WhereInput, orderBy: [{{$name}}OrderBy!]): {{$name}}Connection
+  {{$name | camelize | lowerCaseFirst | pluralize}}Jump(where: {{$name}}WhereInput, pageIndex: Int, pageLength: Int, orderBy: [{{$name}}Order!]): {{$name}}Page!
+  {{$name | camelize | lowerCaseFirst | pluralize}}Step(after: Cursor, before: Cursor, first: Int, last: Int, where: {{$name}}WhereInput, orderBy: [{{$name}}Order!]): {{$name}}Connection
 }
 
 {{/* Mutation */ -}}
-extend type Mutation {
+extend type Mutation { 
   create{{$name}}(input: Create{{$name}}Input!): Create{{$name}}Payload
+  modify{{$name}}(input: Modify{{$name}}Input!): Modify{{$name}}Payload
   delete{{$name}}(input: Delete{{$name}}Input!): Delete{{$name}}Payload
+{{- range $f := $node.Fields}}
+  set{{$name}}{{$f.Name | camelize}}(id: ID!, value: {{$f | scalarName}}): {{$name}}!
+{{- end}}
 }
 

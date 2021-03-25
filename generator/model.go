@@ -5,7 +5,7 @@ import (
 	"go/format"
 	"io"
 
-	"github.com/facebook/ent/entc/gen"
+	"entgo.io/ent/entc/gen"
 )
 
 type ModelsData struct {

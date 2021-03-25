@@ -2,16 +2,34 @@ package generator
 
 import (
 	"io"
+	"os"
 
-	"github.com/facebook/ent/entc/gen"
+	"entgo.io/ent/entc/gen"
 )
 
-func (g *Generator) SchemaDefinition(wr io.Writer) error {
-	if err := templates.ExecuteTemplate(wr, "template/base_sdl.tmpl", nil); err != nil {
+func (g *Generator) SchemaDefinition(filePath string, tmplAdditionals []string) error {
+	initTempl(tmplAdditionals)
+	os.MkdirAll(filePath, 0755)
+	file, err := os.Create(filePath + "schema.ent.base.graphql")
+	if err != nil {
+		println(err.Error())
 		return err
 	}
+	defer file.Close()
+
+	if err := templates.ExecuteTemplate(file, "template/base_sdl.tmpl", nil); err != nil {
+		return err
+	}
+
 	for _, t := range g.Graph.Nodes {
-		if err := nodeSchemaDefinition(wr, t); err != nil {
+		file, err := os.Create(filePath + "schema.ent." + t.Name + ".graphql")
+		if err != nil {
+			println(err.Error())
+			return err
+		}
+		defer file.Close()
+
+		if err := nodeSchemaDefinition(file, t); err != nil {
 			return err
 		}
 	}
