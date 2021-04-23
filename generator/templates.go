@@ -100,6 +100,15 @@ func scalarName(typ *gen.Field) (t string) {
 		t = "String"
 	case field.TypeInt, field.TypeInt8, field.TypeInt16, field.TypeInt32, field.TypeInt64:
 		t = "Int"
+		if typ.Annotations["EntGQL"] != nil {
+			if m, ok := typ.Annotations["EntGQL"].(map[string]interface{}); ok {
+				if mm, ok := m["Mapping"]; ok {
+					if mmm, ok := mm.([]interface{}); ok && len(mmm) > 0 {
+						t = mmm[0].(string)
+					}
+				}
+			}
+		}
 	case field.TypeUint, field.TypeUint8, field.TypeUint16, field.TypeUint32, field.TypeUint64:
 		t = "Uint"
 	case field.TypeFloat32, field.TypeFloat64:
