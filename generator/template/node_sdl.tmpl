@@ -143,7 +143,7 @@ input {{$name}}WhereInput {
 
 enum {{$name}}OrderField {
 {{- range $f := $node.Fields}}
-  {{$f.Name | upperCase}} 
+  {{$f.Name | underscore | upperCase}} 
 {{- end}}
 }
 

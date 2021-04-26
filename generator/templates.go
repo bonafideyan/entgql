@@ -48,6 +48,7 @@ var (
 		"singular":       rules.Singularize,
 		"pluralize":      rules.Pluralize,
 		"camelize":       rules.Camelize,
+		"underscore":     rules.Underscore,
 		"scalarName":     scalarName,
 		"goType":         goType,
 		"quote":          strconv.Quote,
