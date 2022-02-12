@@ -25,6 +25,7 @@ func main() {
 			); err != nil {
 				log.Fatalln(err)
 			}
+			// glog.Info("3rd entgql")
 		},
 	}
 	gCmd.Flags().StringSliceVarP(&templates, "template", "", nil, "external templates to execute")

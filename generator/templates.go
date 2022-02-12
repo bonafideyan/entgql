@@ -54,6 +54,7 @@ var (
 		"quote":          strconv.Quote,
 		"scalarName1":    scalarName1,
 		"isEnum":         isEnum,
+		"hasTemplate":    hasTemplate,
 	}
 	rules    = ruleset()
 	acronyms = make(map[string]struct{})
@@ -73,6 +74,11 @@ func ruleset() *inflect.Ruleset {
 		rules.AddAcronym(w)
 	}
 	return rules
+}
+
+func hasTemplate(name string) bool {
+	tmpl := template.New("")
+	return tmpl.Lookup(name) != nil
 }
 
 func lowerCaseFirst(s string) string {

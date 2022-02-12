@@ -41,15 +41,16 @@ type {{$name}} implements Node {
   {{$e.Name | camelize | lowerCaseFirst | pluralize}}Step(after: Cursor, before: Cursor, first: Int, last: Int, where: {{$eName}}WhereInput, orderBy: [{{$eName}}Order!]): {{$eName}}Connection
 {{- end}}
 {{- end}}
-{{/* {{- if eq additionalFieldForType }} */}}
+{{- if hasTemplate "additionalFieldForType" }}
 {{- template "additionalFieldForType" .}}
-{{/* {{- end}} */}}
+{{- end}}
 }
 
 type {{$node.Name}}Page {
   totalCount: Int!
   current: Int!
   nodes: [{{$name}}!]!
+  append: Any
 }
  
 type {{$name}}Edge {
@@ -92,7 +93,7 @@ input Modify{{$name}}Input {
 
 input Delete{{$name}}Input {
   clientMutationId: String
-  id: {{$idType}}!
+  id: [{{$idType}}!]!
 }
  
 type Create{{$name}}Payload {
@@ -107,7 +108,7 @@ type Modify{{$name}}Payload {
 
 type Delete{{$name}}Payload {
   clientMutationId: String
-  {{$name | lowerCaseFirst}}: {{$name}}! 
+  {{$name | lowerCaseFirst}}: [{{$name}}!]! 
   
 {{- range $e := $node.Edges}}
 {{- $eName := $e.Type.Name}}
