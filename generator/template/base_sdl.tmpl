@@ -13,6 +13,12 @@ enum OrderDirection {
   DESC
 }
 
+enum UploadFileOverwrite {
+  UNKNOWN
+  YES
+  NO
+}
+
 type PageInfo {
   hasNextPage: Boolean!
   hasPreviousPage: Boolean!
@@ -109,16 +115,18 @@ input AnyFilter {
 type Subscription {
   tellMe: Info!
 }
-
-type UploadedFile {
-  id: String!
-  fid: String!
-  name: String!
-  mimeType: String!
+ 
+input MultipleUploadInput {
+  toFolder: String
+  toFolderId: Int
+  withPath: Boolean
+  files: [Upload!]!
+  overwrite: UploadFileOverwrite
 }
-input UploadFile {
-  id: String!
-  file: Upload!
+type MultipleUploadPayload {
+  files: [FolderFile!]!
+  toOverwrite: [FolderFile!]
+  overwrite: UploadFileOverwrite
 }
 
 input LoginInput {
@@ -146,7 +154,7 @@ type SuccessPayload {
 }
 
 extend type Mutation {
-  multipleUpload(req: [UploadFile!]!): [UploadedFile!]!
+  multipleUpload(req: MultipleUploadInput!): MultipleUploadPayload!
   login(input: LoginInput!): LoginPayload!
   refreshToken(input: RefreshTokenInput!): SuccessPayload!
   changePassword(input: ChangePasswordInput!): SuccessPayload!

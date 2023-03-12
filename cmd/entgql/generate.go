@@ -26,8 +26,17 @@ func generate(entSchemaPath, generatedGraphqlPath, generatedResolversPath, gener
 		return fmt.Errorf("generate schema: %w", err)
 	}
 
-	entgql.Tellme()
 	err = entc.Generate(entSchemaPath, &gen.Config{
+		Features: []gen.Feature{
+			gen.FeatureLock,
+			gen.FeatureUpsert,
+			gen.FeatureModifier,
+			gen.FeatureEntQL,
+			gen.FeaturePrivacy,
+			gen.FeatureExecQuery,
+			gen.FeatureNamedEdges,
+			gen.FeatureSnapshot,
+		},
 		Templates: entgql.AllTemplates,
 	})
 	if err != nil {
